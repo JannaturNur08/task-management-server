@@ -40,7 +40,7 @@ async function run() {
 		//get task by email
 		app.get("/myTasks", async (req, res) => {
 			const email = req.query.email;
-			console.log(email);
+			// console.log(email);
 			const query = { email: email };
 			const result = await taskCollection.find(query).toArray();
 			res.send(result);
@@ -48,21 +48,38 @@ async function run() {
 
 		//task status update
 		app.put("/tasks/:id", async (req, res) => {
-			const { status } = req.body;
-			const taskId = req.params.id;
-
-			let update = {
+			try {
+			  const { status } = req.body;
+			  const taskId = req.params.id;
+		  
+			  if (!["ToDo", "In-Progress", "Done"].includes(status)) {
+				// Return an error response for invalid status
+				return res.status(400).json({ error: "Invalid status" });
+			  }
+		  
+			  const update = {
 				$set: {
-					status: status,
+				  status: status,
 				},
-			};
-
-			const result = await taskCollection.updateOne(
+			  };
+		  
+			  const result = await taskCollection.updateOne(
 				{ _id: new ObjectId(taskId) },
 				update
-			);
-			res.send(result);
-		});
+			  );
+		  
+			  if (result.modifiedCount > 0) {
+				// Task status updated successfully
+				res.json({ success: true, message: "Task status updated successfully" });
+			  } else {
+				// Task not found or no changes made
+				res.status(404).json({ error: "Task not found" });
+			  }
+			} catch (error) {
+			  console.error("Error updating task status:", error);
+			  res.status(500).json({ error: "Internal server error" });
+			}
+		  });
 
 		//delete task
 		app.delete("/tasks/:id", async (req, res) => {
